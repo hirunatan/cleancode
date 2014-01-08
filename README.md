@@ -1,4 +1,4 @@
 cleancode
 =========
 
-Clean code exercises
+A repository to store some Clean Code exercises.
