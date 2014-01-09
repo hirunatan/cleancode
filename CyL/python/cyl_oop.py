@@ -126,8 +126,7 @@ class CyLGame(object):
         if current_word == None:
             current_word = []
 
-        for i in range(0, len(letters)):
-            letter = letters[i]
+        for i, letter in enumerate(letters):
 
             if not dict_node.has_letter(letter):
                 continue
