@@ -1,0 +1,1 @@
+../../dictionary/es_ES.utf8.dict
