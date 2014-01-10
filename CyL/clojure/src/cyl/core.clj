@@ -1,6 +1,7 @@
 (ns cyl.core
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
+            [clojure.math.combinatorics :as combo]
             [swiss.arrows :refer [-<>]])
   (:gen-class))
 
@@ -20,19 +21,29 @@
       (str/replace #"ó" "o")
       (str/replace #"ú" "u")))
 
+(defn make-combinations
+  "Given a vector of characrters as string
+  return vector of possible combinations."
+  [cs]
+  (let [combs (for [i (range 1 (inc (count cs)))]
+                (combo/combinations cs i))
+        combs (for [i1 combs i2 i1] i2)
+        combs (for [i combs] (combo/permutations i))
+        combs (for [i1 combs i2 i1] i2)]
+    (vec (apply hash-set combs))))
+
 (defn read-dictionary
   "Read a dict file and normalize it."
   [^String filename]
   (let [resource    (io/resource filename)
         raw-words   (str/split-lines (slurp resource))]
-    (map normalize-word raw-words)))
+    (map normalize-word (next raw-words))))
 
 (defn make-dictionary
-  "Create a data structure for a dictionary"
+  "Creates a plain dictionare from list
+  of words"
   []
-  (-<> (read-dictionary "dict.txt")
-       (map #(reduce (fn [v c] (if v {(str c) v} {(str c) {}})) nil (reverse %1)) <>)
-       (apply combine <>)))
+  (zipmap (read-dictionary "dict.txt") (repeat 1)))
 
 (defn read-chars
   "Read input from stdin and return a
@@ -44,20 +55,20 @@
     (vec (map str/trim (str/split readed #",")))))
 
 (defn search-words
-  "Search words."
+  "Given a characters vector, return a lazy seq."
   [characters dict]
-  (let [words (atom [])
-        f     (fn f [characters dict word]
-                (doseq [ch characters]
-                  (when (dict ch)
-                    (if-not (seq (dict ch))
-                      (swap! words conj (str word ch))
-                      (f characters (dict ch) (str word ch))))))]
-    (apply f [characters dict ""])
-    (deref words)))
+  (let [f (fn f [combinations]
+            (let [fcomb (first combinations)]
+              (when fcomb
+                (let [candidate (apply str fcomb)]
+                  (if (contains? dict candidate)
+                    (cons candidate (lazy-seq (f (next combinations))))
+                    (cons :nodata (lazy-seq (f (next combinations)))))))))]
+     (remove #(= % :nodata)
+             (f (make-combinations characters)))))
 
 (defn -main
   [& args]
   (let [dict        (make-dictionary)
         characters  (read-chars)]
-    (println (str/join "\n" (search-words characters dict)))))
+    (println "Found:" (str/join ", " (search-words characters dict)))))
